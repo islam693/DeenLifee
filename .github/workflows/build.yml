@@ -29,28 +29,28 @@ jobs:
       - name: Extract project
         run: unzip DeenLife-Source.zip -d .
 
-      - name: Find project directory
-        id: find_project
+      - name: Find gradlew wrapper
+        id: find_gradle
         run: |
-          if [ -d "DeenLife" ]; then
-            echo "dir=DeenLife" >> $GITHUB_OUTPUT
-          elif [ -d "DeenLife-Source" ]; then
-            echo "dir=DeenLife-Source" >> $GITHUB_OUTPUT
-          else
-            echo "dir=." >> $GITHUB_OUTPUT
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "::error::gradlew not found in archive"
+            exit 1
           fi
+          DIR=$(dirname "$GRADLEW_PATH")
+          echo "project_dir=$DIR" >> $GITHUB_OUTPUT
+          echo "gradlew=$GRADLEW_PATH" >> $GITHUB_OUTPUT
 
       - name: Make gradlew executable
-        working-directory: ${{ steps.find_project.outputs.dir }}
-        run: chmod +x gradlew
+        run: chmod +x ${{ steps.find_gradle.outputs.gradlew }}
 
       - name: Build APK
-        working-directory: ${{ steps.find_project.outputs.dir }}
+        working-directory: ${{ steps.find_gradle.outputs.project_dir }}
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DeenLife-APK
-          path: ${{ steps.find_project.outputs.dir }}/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.find_gradle.outputs.project_dir }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
